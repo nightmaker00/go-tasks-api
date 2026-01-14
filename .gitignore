@@ -1,0 +1,6 @@
+bin/
+app
+
+.env
+
+.DS_Store

@@ -1,0 +1,14 @@
+.git
+.gitignore
+
+bin/
+build/
+
+deployments/docker-compose.yml
+deployments/.env
+
+
+*.md
+
+
+.DS_Store
