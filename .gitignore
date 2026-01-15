@@ -1,6 +1,5 @@
 bin/
-app
 
 .env
 
-.DS_Store
+.DS_
