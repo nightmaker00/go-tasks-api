@@ -1,0 +1,66 @@
+package main
+
+import (
+	"context"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/nightmaker00/go-tasks-api/internal/api"
+	"github.com/nightmaker00/go-tasks-api/internal/config"
+	"github.com/nightmaker00/go-tasks-api/internal/repository"
+	"github.com/nightmaker00/go-tasks-api/internal/service"
+	"github.com/nightmaker00/go-tasks-api/pkg/db/postgres"
+)
+
+func main() {
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	db, err := postgres.Open(cfg.Config)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	if err := db.Ping(); err != nil {
+		log.Fatal(err)
+	}
+
+	taskRepo := repository.NewTaskRepository(db)
+	taskService := service.NewTaskService(taskRepo)
+	handler := api.NewHandler(taskService)
+
+	mux := http.NewServeMux()
+	handler.RegisterRoutes(mux)
+
+	server := &http.Server{
+		Addr:         cfg.Server.Address + ":" + cfg.Server.Port,
+		Handler:      mux,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+	//graceful shutdown
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal(err)
+		}
+	}()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	<-stop
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Fatal(err)
+	}
+}
