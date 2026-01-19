@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/nightmaker00/go-tasks-api/internal/domain"
 	"github.com/nightmaker00/go-tasks-api/internal/service"
 )
@@ -18,7 +19,6 @@ type Handler struct {
 func NewHandler(taskService TaskService) *Handler {
 	return &Handler{taskService: taskService}
 }
-
 
 func (h *Handler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	var req domain.CreateTaskRequest
@@ -137,8 +137,12 @@ func writeError(w http.ResponseWriter, status int, message string) {
 	writeJSON(w, status, map[string]string{"error": message})
 }
 
-func parseID(raw string) (int64, error) {
-	return strconv.ParseInt(raw, 10, 64)
+func parseID(raw string) (uuid.UUID, error) {
+	value, err := uuid.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return uuid.Nil, errors.New("invalid uuid")
+	}
+	return value, nil
 }
 
 func parseIntParam(r *http.Request, key string) (int, error) {

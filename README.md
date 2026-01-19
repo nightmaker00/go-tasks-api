@@ -25,3 +25,42 @@ go-tasks-api — REST API сервис для управления задача�
 ```
 cp .env.example .env
 ```
+
+2) Поднять сервисы:
+
+```
+make docker-up
+```
+
+3) Накатить миграции:
+
+```
+make migrate-up
+```
+
+## Переменные окружения
+
+### Сервер
+- `SERVER_HOST` (по умолчанию `0.0.0.0`)
+- `SERVER_PORT` (по умолчанию `8080`)
+- `SERVER_READ_TIMEOUT_SECONDS` (по умолчанию `5`)
+- `SERVER_WRITE_TIMEOUT_SECONDS` (по умолчанию `10`)
+- `SERVER_IDLE_TIMEOUT_SECONDS` (по умолчанию `60`)
+
+### PostgreSQL
+- `POSTGRES_HOST`
+- `POSTGRES_PORT`
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+- `POSTGRES_DB`
+- `POSTGRES_SSLMODE`
+
+## Линтер
+
+```
+make lint
+```
+
+## UUID
+
+ID задач — UUID (генерация на сервере).

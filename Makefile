@@ -1,4 +1,4 @@
-.PHONY: run build test tidy lint vet fmt clean deps\
+.PHONY: run build test tidy lint lint-install vet fmt clean deps\
 	docker-up docker-down migrate-up migrate-down
 
 APP_NAME := go-tasks-api
@@ -7,6 +7,7 @@ CMD_DIR := ./cmd/app
 MIGRATIONS_DIR := ./migrations
 
 GO ?= go
+GOLANGCI_LINT ?= golangci-lint
 
 
 run:
@@ -24,8 +25,10 @@ fmt:
 	$(GO) vet ./...
 
 lint:
-	$(GO) vet ./...
-	gofmt -l .
+	$(GOLANGCI_LINT) run ./...
+
+lint-install:
+	$(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
 vet:
 	$(GO) vet ./...
@@ -45,7 +48,13 @@ docker-down:
 	docker compose -f deployments/docker-compose.yml down
 
 migrate-up:
-	psql "$$DATABASE_URL" -f $(MIGRATIONS_DIR)/000001_task.up.sql
+	@for f in $(MIGRATIONS_DIR)/*.up.sql; do \
+		echo "apply $$f"; \
+		psql "$$DATABASE_URL" -f $$f; \
+	done
 
 migrate-down:
-	psql "$$DATABASE_URL" -f $(MIGRATIONS_DIR)/000001_task.down.sql
+	@for f in $$(ls -r $(MIGRATIONS_DIR)/*.down.sql); do \
+		echo "rollback $$f"; \
+		psql "$$DATABASE_URL" -f $$f; \
+	done

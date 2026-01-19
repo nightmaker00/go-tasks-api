@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/nightmaker00/go-tasks-api/internal/domain"
 )
 
@@ -26,17 +27,21 @@ func NewTaskService(repo TaskRepository) *taskService {
 	return &taskService{repo: repo}
 }
 
-func (s *taskService) Create(ctx context.Context, title string, description string) (int64, error) {
+func (s *taskService) Create(ctx context.Context, title string, description string) (uuid.UUID, error) {
 	title = strings.TrimSpace(title)
 	if title == "" {
-		return 0, ErrInvalidTitle
+		return uuid.Nil, ErrInvalidTitle
 	}
 
 	desc := normalizeDescription(description)
-	return s.repo.Create(ctx, title, desc, domain.TaskStatusNew)
+	id := uuid.New()
+	if err := s.repo.Create(ctx, id, title, desc, string(domain.TaskStatusNew)); err != nil {
+		return uuid.Nil, err
+	}
+	return id, nil
 }
 
-func (s *taskService) GetByID(ctx context.Context, id int64) (*domain.Task, error) {
+func (s *taskService) GetByID(ctx context.Context, id uuid.UUID) (*domain.Task, error) {
 	task, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -47,7 +52,7 @@ func (s *taskService) GetByID(ctx context.Context, id int64) (*domain.Task, erro
 	return task, nil
 }
 
-func (s *taskService) Update(ctx context.Context, id int64, title string, description *string, status string) error {
+func (s *taskService) Update(ctx context.Context, id uuid.UUID, title string, description *string, status string) error {
 	title = strings.TrimSpace(title)
 	if title == "" {
 		return ErrInvalidTitle
@@ -67,13 +72,10 @@ func (s *taskService) Update(ctx context.Context, id int64, title string, descri
 	return nil
 }
 
-func (s *taskService) Delete(ctx context.Context, id int64) error {
-	deleted, err := s.repo.Delete(ctx, id)
+func (s *taskService) Delete(ctx context.Context, id uuid.UUID) error {
+	err := s.repo.Delete(ctx, id)
 	if err != nil {
 		return err
-	}
-	if !deleted {
-		return ErrTaskNotFound
 	}
 	return nil
 }
@@ -97,7 +99,7 @@ func (s *taskService) List(ctx context.Context, status string, limit, offset int
 
 func isValidStatus(status string) bool {
 	switch status {
-	case domain.TaskStatusNew, domain.TaskStatusInProgress, domain.TaskStatusDone:
+	case string(domain.TaskStatusNew), string(domain.TaskStatusInProgress), string(domain.TaskStatusDone):
 		return true
 	default:
 		return false

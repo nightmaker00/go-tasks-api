@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/nightmaker00/go-tasks-api/internal/domain"
 )
 
@@ -16,23 +17,23 @@ func NewTaskRepository(db *sql.DB) *TaskRepository {
 	return &TaskRepository{db: db}
 }
 
-func (r *TaskRepository) Create(ctx context.Context, title string, description *string, status string) (int64, error) {
-	var id int64
+func (r *TaskRepository) Create(ctx context.Context, id uuid.UUID, title string, description *string, status string) error {
 	desc := toNullString(description)
-	err := r.db.QueryRowContext(
+	_, err := r.db.ExecContext(
 		ctx,
-		`INSERT INTO tasks (title, description, status) VALUES ($1, $2, $3) RETURNING id`,
+		`INSERT INTO tasks (id, title, description, status) VALUES ($1, $2, $3, $4)`,
+		id,
 		title,
 		desc,
 		status,
-	).Scan(&id)
+	)
 	if err != nil {
-		return 0, fmt.Errorf("create task: %w", err)
+		return fmt.Errorf("create task: %w", err)
 	}
-	return id, nil
+	return nil
 }
 
-func (r *TaskRepository) GetByID(ctx context.Context, id int64) (*domain.Task, error) {
+func (r *TaskRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Task, error) {
 	task := &domain.Task{}
 	var description sql.NullString
 	err := r.db.QueryRowContext(
@@ -50,9 +51,17 @@ func (r *TaskRepository) GetByID(ctx context.Context, id int64) (*domain.Task, e
 	return task, nil
 }
 
-func (r *TaskRepository) Update(ctx context.Context, id int64, title string, description *string, status string) (bool, error) {
+func (r *TaskRepository) Update(ctx context.Context, id uuid.UUID, title string, description *string, status string) (bool, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, fmt.Errorf("update task begin: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
 	desc := toNullString(description)
-	result, err := r.db.ExecContext(
+	result, err := tx.ExecContext(
 		ctx,
 		`UPDATE tasks SET title = $1, description = $2, status = $3, updated_at = NOW() WHERE id = $4`,
 		title,
@@ -67,19 +76,29 @@ func (r *TaskRepository) Update(ctx context.Context, id int64, title string, des
 	if err != nil {
 		return false, fmt.Errorf("update task rows: %w", err)
 	}
+	if err := tx.Commit(); err != nil {
+		return false, fmt.Errorf("update task commit: %w", err)
+	}
 	return affected > 0, nil
 }
 
-func (r *TaskRepository) Delete(ctx context.Context, id int64) (bool, error) {
-	result, err := r.db.ExecContext(ctx, `DELETE FROM tasks WHERE id = $1`, id)
+func (r *TaskRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return false, fmt.Errorf("delete task: %w", err)
+		return fmt.Errorf("delete task begin: %w", err)
 	}
-	affected, err := result.RowsAffected()
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	_, err = tx.ExecContext(ctx, `DELETE FROM tasks WHERE id = $1`, id)
 	if err != nil {
-		return false, fmt.Errorf("delete task rows: %w", err)
+		return fmt.Errorf("delete task: %w", err)
 	}
-	return affected > 0, nil
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("delete task commit: %w", err)
+	}
+	return nil
 }
 
 func (r *TaskRepository) List(ctx context.Context, status string, limit, offset int) ([]domain.TaskListItem, error) {

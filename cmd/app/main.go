@@ -38,13 +38,14 @@ func main() {
 
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux)
+	rootHandler := api.WithCORS(mux)
 
 	server := &http.Server{
 		Addr:         cfg.Server.Address + ":" + cfg.Server.Port,
-		Handler:      mux,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		Handler:      rootHandler,
+		ReadTimeout:  time.Duration(cfg.Server.Timeouts.ReadSeconds) * time.Second,
+		WriteTimeout: time.Duration(cfg.Server.Timeouts.WriteSeconds) * time.Second,
+		IdleTimeout:  time.Duration(cfg.Server.Timeouts.IdleSeconds) * time.Second,
 	}
 	//graceful shutdown
 	go func() {
