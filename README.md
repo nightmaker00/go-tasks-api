@@ -38,6 +38,18 @@ make docker-up
 make migrate-up
 ```
 
+## Swagger
+
+Генерация документации:
+
+```
+make swagger
+```
+
+Swagger UI:
+
+- http://localhost:8080/swagger/index.html
+
 ## Переменные окружения
 
 ### Сервер

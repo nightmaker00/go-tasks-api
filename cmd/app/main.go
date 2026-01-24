@@ -14,7 +14,18 @@ import (
 	"github.com/nightmaker00/go-tasks-api/internal/repository"
 	"github.com/nightmaker00/go-tasks-api/internal/service"
 	"github.com/nightmaker00/go-tasks-api/pkg/db/postgres"
+
+	_ "github.com/nightmaker00/go-tasks-api/docs"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
+
+// @title           Tasks API
+// @version         1.0
+// @description     REST API для управления задачами (CRUDL)
+// @description     Реализовано на чистом Go с использованием стандартной библиотеки
+// @host            localhost:8080
+// @BasePath        /
+// @schemes         http
 
 func main() {
 	cfg, err := config.Load()
@@ -37,6 +48,11 @@ func main() {
 	handler := api.NewHandler(taskService)
 
 	mux := http.NewServeMux()
+
+	mux.HandleFunc("/swagger/", httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"),
+	))
+
 	handler.RegisterRoutes(mux)
 	rootHandler := api.WithCORS(mux)
 

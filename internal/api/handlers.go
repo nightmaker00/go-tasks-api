@@ -20,6 +20,17 @@ func NewHandler(taskService TaskService) *Handler {
 	return &Handler{taskService: taskService}
 }
 
+// CreateTask создаёт новую задачу
+// @Summary      Создать задачу
+// @Description  Создаёт новую задачу с указанным заголовком и описанием
+// @Tags         tasks
+// @Accept       json
+// @Produce      json
+// @Param        task  body      domain.CreateTaskRequest  true  "Данные задачи"
+// @Success      201   {object}  domain.CreateTaskResponse
+// @Failure      400   {object}  map[string]string  "Неверный запрос"
+// @Failure      500   {object}  map[string]string  "Внутренняя ошибка"
+// @Router       /tasks [post]
 func (h *Handler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	var req domain.CreateTaskRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -34,6 +45,17 @@ func (h *Handler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, domain.CreateTaskResponse{ID: id})
 }
 
+// GetTask получает задачу по ID
+// @Summary      Получить задачу
+// @Description  Возвращает задачу по её UUID
+// @Tags         tasks
+// @Accept       json
+// @Produce      json
+// @Param        id   path      string  true  "UUID задачи"
+// @Success      200  {object}  domain.Task
+// @Failure      400  {object}  map[string]string  "Неверный UUID"
+// @Failure      404  {object}  map[string]string  "Задача не найдена"
+// @Router       /tasks/{id} [get]
 func (h *Handler) GetTask(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r.PathValue("id"))
 	if err != nil {
@@ -48,6 +70,18 @@ func (h *Handler) GetTask(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, toTaskResponse(task))
 }
 
+// UpdateTask обновляет задачу
+// @Summary      Обновить задачу
+// @Description  Обновляет данные задачи (заголовок, описание, статус)
+// @Tags         tasks
+// @Accept       json
+// @Produce      json
+// @Param        id    path      string                true  "UUID задачи"
+// @Param        task  body      domain.UpdateTaskRequest  true  "Обновлённые данные"
+// @Success      200   {object}  domain.UpdateTaskResponse
+// @Failure      400   {object}  map[string]string  "Неверный запрос"
+// @Failure      404   {object}  map[string]string  "Задача не найдена"
+// @Router       /tasks/{id} [put]
 func (h *Handler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r.PathValue("id"))
 	if err != nil {
@@ -68,6 +102,16 @@ func (h *Handler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, domain.UpdateTaskResponse{Status: "updated"})
 }
 
+// DeleteTask удаляет задачу
+// @Summary      Удалить задачу
+// @Description  Удаляет задачу по её UUID (идемпотентная операция)
+// @Tags         tasks
+// @Accept       json
+// @Produce      json
+// @Param        id   path      string  true  "UUID задачи"
+// @Success      204  "No Content"
+// @Failure      400  {object}  map[string]string  "Неверный UUID"
+// @Router       /tasks/{id} [delete]
 func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r.PathValue("id"))
 	if err != nil {
@@ -81,6 +125,18 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusNoContent, nil)
 }
 
+// ListTasks получает список задач
+// @Summary      Список задач
+// @Description  Возвращает список задач с фильтрацией по статусу и пагинацией
+// @Tags         tasks
+// @Accept       json
+// @Produce      json
+// @Param        status  query     string  false  "Фильтр по статусу (new, in_progress, done)"
+// @Param        limit   query     int     false  "Лимит записей (по умолчанию 100, максимум 1000)"
+// @Param        offset  query     int     false  "Смещение для пагинации"
+// @Success      200     {array}   domain.TaskListItem
+// @Failure      400     {object}  map[string]string  "Неверные параметры"
+// @Router       /tasks [get]
 func (h *Handler) ListTasks(w http.ResponseWriter, r *http.Request) {
 	status := strings.TrimSpace(r.URL.Query().Get("status"))
 	limit, err := parseIntParam(r, "limit")
