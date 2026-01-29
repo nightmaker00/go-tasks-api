@@ -8,3 +8,5 @@ CREATE TABLE tasks (
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks (status);
